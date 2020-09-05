@@ -1,102 +1,12 @@
 
 from tkinter import *
+import os,stat
 import tkinter as tk
 from tkinter import ttk
 from time import strftime, localtime
+from custom import *
 
 colors = ['#263','#485','#ddd','#263','#643','#efe']
-
-class CustomNotebook(ttk.Notebook):
-    """A ttk Notebook with close buttons on each tab"""
-
-    __initialized = False
-
-    def __init__(self, *args, **kwargs):
-        if not self.__initialized:
-            self.__initialize_custom_style()
-            self.__inititialized = True
-
-        kwargs["style"] = "CustomNotebook"
-        ttk.Notebook.__init__(self, *args, **kwargs)
-
-        self._active = None
-
-        self.bind("<ButtonPress-1>", self.on_close_press, True)
-        self.bind("<ButtonRelease-1>", self.on_close_release)
-
-    def on_close_press(self, event):
-        """Called when the button is pressed over the close button"""
-
-        element = self.identify(event.x, event.y)
-
-        if "close" in element:
-            index = self.index("@%d,%d" % (event.x, event.y))
-            self.state(['pressed'])
-            self._active = index
-
-    def on_close_release(self, event):
-        """Called when the button is released over the close button"""
-        if not self.instate(['pressed']):
-            return
-
-        element =  self.identify(event.x, event.y)
-        index = self.index("@%d,%d" % (event.x, event.y))
-
-        if "close" in element and self._active == index:
-            self.forget(index)
-            self.event_generate("<<NotebookTabClosed>>")
-
-        self.state(["!pressed"])
-        self._active = None
-
-    def __initialize_custom_style(self):
-        style = ttk.Style()
-        self.images = (
-            tk.PhotoImage("img_close", data='''
-                R0lGODlhCAAIAMIBAAAAADs7O4+Pj9nZ2Ts7Ozs7Ozs7Ozs7OyH+EUNyZWF0ZWQg
-                d2l0aCBHSU1QACH5BAEKAAQALAAAAAAIAAgAAAMVGDBEA0qNJyGw7AmxmuaZhWEU
-                5kEJADs=
-                '''),
-            tk.PhotoImage("img_closeactive", data='''
-                R0lGODlhCAAIAMIEAAAAAP/SAP/bNNnZ2cbGxsbGxsbGxsbGxiH5BAEKAAQALAAA
-                AAAIAAgAAAMVGDBEA0qNJyGw7AmxmuaZhWEU5kEJADs=
-                '''),
-            tk.PhotoImage("img_closepressed", data='''
-                R0lGODlhCAAIAMIEAAAAAOUqKv9mZtnZ2Ts7Ozs7Ozs7Ozs7OyH+EUNyZWF0ZWQg
-                d2l0aCBHSU1QACH5BAEKAAQALAAAAAAIAAgAAAMVGDBEA0qNJyGw7AmxmuaZhWEU
-                5kEJADs=
-            ''')
-        )
-
-        style.configure("CustomNotebook",background=colors[5])
-
-        try:
-            style.element_create("close", "image", "img_close",
-                            ("active", "pressed", "!disabled", "img_closepressed"),
-                            ("active", "!disabled", "img_closeactive"), border=8, sticky='')
-        except: pass
-        style.layout("CustomNotebook", [("CustomNotebook.client", {"sticky": "nswe"})])
-        style.layout("CustomNotebook.Tab", [
-            ("CustomNotebook.tab", {
-                "sticky": "nswe",
-                "children": [
-                    ("CustomNotebook.padding", {
-                        "side": "top", 
-                        "sticky": "nswe",
-                        "children": [
-                            ("CustomNotebook.focus", {
-                                "side": "top", 
-                                "sticky": "nswe",
-                                "children": [
-                                    ("CustomNotebook.label", {"side": "left", "sticky": ''}),
-                                    ("CustomNotebook.close", {"side": "left", "sticky": ''}),
-                                ]
-                        })
-                    ]
-                })
-            ]
-        })
-    ])
 
 class TypeSelector:
 
@@ -126,19 +36,25 @@ class TypeSelector:
 class LabeledLineEdit:
 
     def update(self):
-        self.top.message.setField(self.field,self.var.get())
+        if self.var.get()!='':
+            self.top.message.setField(self.field,self.var.get())
+        else:
+            self.top.message.setField(self.field,None)
+        self.top.message.setMsgLength()
+        self.top.sentLength.set(self.top.message.fields['Satzlänge'][1])
+        return True
 
-    def __init__(self, top, label, field, var, font=('Arial','12')):
+    def __init__(self, top, label, field, var, font=('Arial','11')):
         self.top = top
         self.container = Frame(top.content,width=580,height=36)
         self.field = field
         self.var = var
-        self.var.set(top.message.fields[field][1])
+        self.var.set(tmp if (tmp:=top.message.fields[field][1])!=None else '')
         self.label = Label(self.container, text=label, font=font, width=30,anchor='e')
-        self.line = Entry(self.container, font=font)
-        self.line.config(textvariable=self.var, validate='key', validatecommand=self.update)
+        self.line = Entry(self.container, font=font, width=28)
+        self.line.config(textvariable=self.var, validate=ALL, validatecommand=self.update)
         self.label.place(x=0,y=7)
-        self.line.place(x=320,y=7)
+        self.line.place(x=300,y=7)
         
     def place(self):
         self.container.pack()
@@ -150,18 +66,30 @@ class LabeledTextEdit:
 
     def update(self):
         self.top.message.setField(self.field,self.var.get())
+        self.top.message.setMsgLength()
+        self.top.sentLength.set(self.top.message.fields['Satzlänge'][1])
+        return True
 
-    def __init__(self, top, label, field, var, font=('Arial','12')):
+    def __init__(self, top, label, field, var, font=('Arial','11')):
         self.top = top
-        self.container = Frame(top.content,width=580,height=36)
+        self.container = Frame(top.content,width=580,height=180)
         self.field = field
         self.var = var
-        self.var.set(top.message.fields[field][1])
+        self.textContainer = Frame(self.container,width=288,height=170)
+        self.var.set(tmp if (tmp:=top.message.fields[field][1])!=None else '')
         self.label = Label(self.container, text=label, font=font, width=30,anchor='e')
-        self.line = Text(self.container, font=font)
+        self.scrollbar = Scrollbar(self.textContainer, orient= VERTICAL)
+        self.textfield = Text(self.textContainer, yscrollcommand= self.scrollbar.set,width=28,height=9)
+        self.scrollbar.config(command=self.textfield.yview)
+        self.textfield.insert(END,top.message.fields[field][1] if top.message.fields[field][1]!=None else '')
+        self.textContainer.place(x=300,y=7)
+        self.scrollbar.pack(side=RIGHT, fill=Y)
+        self.textfield.pack()
+        self.line = self.textfield
         #self.line.config(Variable=self.var, validate='key', validatecommand=self.update)
         self.label.place(x=0,y=7)
-        self.line.place(x=320,y=7)
+        self.textfield.bind('<Enter>', top.container._unbound_to_mousewheel)
+        self.textfield.bind('<Leave>', top.container._bound_to_mousewheel)
         
     def place(self):
         self.container.pack()
@@ -171,16 +99,16 @@ class LabeledTextEdit:
 
 class LabeledText:
 
-    def __init__(self, top, label, field, var, font=('Arial','12')):
+    def __init__(self, top, label, field, var, font=('Arial','11')):
         self.top = top
         self.container = Frame(top.content,width=580,height=36)
         self.field = field
         self.var = var
-        self.var.set(top.message.fields[field][1])
+        self.var.set(tmp if (tmp:=top.message.fields[field][1])!=None else '')
         self.label = Label(self.container, text=label, font=font, width=30,anchor='e')
         self.label2 = Label(self.container, textvariable=self.var, font=font)
         self.label.place(x=0,y=7)
-        self.label2.place(x=320,y=7)
+        self.label2.place(x=300,y=7)
         
     def place(self):
         self.container.pack()
@@ -191,20 +119,24 @@ class LabeledText:
 class LabeledDroplist:
 
     def update(self,*args):
-        print(args)
-        self.top.message.setField(self.field,self.mapping(self.var.get()))
+        if self.var.get()!='':
+            self.top.message.setField(self.field,self.mapping(self.var.get()))
+        else:
+            self.top.message.setField(self.field,None)
+        self.top.message.setMsgLength()
+        self.top.sentLength.set(self.top.message.fields['Satzlänge'][1])
 
-    def __init__(self, top, label, field, var, *opts, mapping=None, font=('Arial','12')):
+    def __init__(self, top, label, field, var, *opts, mapping=(lambda x:x), font=('Arial','11')):
         self.top = top
         self.mapping = mapping
         self.container = Frame(top.content,width=580,height=36)
         self.field = field
         self.var = var
-        self.var.set(top.message.fields[field][1])
+        self.var.set(tmp if (tmp:=top.message.fields[field][1])!=None else '')
         self.label = Label(self.container, text=label, font=font, width=30,anchor='e')
         self.drop = OptionMenu(self.container, self.var, *opts, command=self.update)
         self.label.place(x=0,y=7)
-        self.drop.place(x=320,y=7)
+        self.drop.place(x=300,y=7)
         
     def place(self):
         self.container.pack()
@@ -216,9 +148,15 @@ class LabeledDateEdit:
 
     def update(self):
         self.var.set(self.days.get()+self.months.get()+self.years.get())
-        self.top.message.setField(self.field,self.var.get())
+        if self.var.get()!='':
+            self.top.message.setField(self.field,self.var.get())
+        else:
+            self.top.message.setField(self.field,None)
+        self.top.message.setMsgLength()
+        self.top.sentLength.set(self.top.message.fields['Satzlänge'][1])
+        return True
 
-    def __init__(self, top, label, field, var, font=('Arial','12')):
+    def __init__(self, top, label, field, var, font=('Arial','11')):
         self.days = StringVar()
         self.months = StringVar()
         self.years = StringVar()
@@ -226,23 +164,24 @@ class LabeledDateEdit:
         self.container = Frame(top.content,width=580,height=36)
         self.field = field
         self.var = var
-        self.var.set(top.message.fields[field][1])
+        self.var.set(tmp if (tmp:=top.message.fields[field][1])!=None else
+                     ('01012000' if field in top.message.mandatory[top.msgType.get()] else ''))
         self.days.set(self.var.get()[:2])
         self.months.set(self.var.get()[2:4])
         self.years.set(self.var.get()[4:])
         self.label = Label(self.container, text=label, font=font, width=30,anchor='e')
         self.daysline = Entry(self.container, font=font, width=2)
-        self.daysline.config(textvariable=self.days, validate='key', validatecommand=self.update)
+        self.daysline.config(textvariable=self.days, validate=ALL, validatecommand=self.update)
         self.monthsline = Entry(self.container, font=font, width=2)
-        self.monthsline.config(textvariable=self.months, validate='key', validatecommand=self.update)
+        self.monthsline.config(textvariable=self.months, validate=ALL, validatecommand=self.update)
         self.yearsline = Entry(self.container, font=font, width=4)
-        self.yearsline.config(textvariable=self.years, validate='key', validatecommand=self.update)
+        self.yearsline.config(textvariable=self.years, validate=ALL, validatecommand=self.update)
         self.label2 = Label(self.container, text='TT/MM/JJJJ', font=font+('italic',), width=10,anchor='e')
         self.label.place(x=0,y=7)
-        self.daysline.place(x=320,y=7)
-        self.monthsline.place(x=344,y=7)
-        self.yearsline.place(x=372,y=7)
-        self.label2.place(x=420,y=7)
+        self.daysline.place(x=300,y=7)
+        self.monthsline.place(x=326,y=7)
+        self.yearsline.place(x=352,y=7)
+        self.label2.place(x=410,y=7)
         
     def place(self):
         self.container.pack()
@@ -254,9 +193,16 @@ class LabeledTimeEdit:
 
     def update(self):
         self.var.set(self.hours.get()+self.minutes.get()+self.seconds.get())
-        self.top.message.setField(self.field,self.var.get())
-
-    def __init__(self, top, label, field, var, font=('Arial','12')):
+        print(self.var.get())
+        if self.var.get()!='':
+            self.top.message.setField(self.field,self.var.get())
+        else:
+            self.top.message.setField(self.field,None)
+        self.top.message.setMsgLength()
+        self.top.sentLength.set(self.top.message.fields['Satzlänge'][1])
+        return True
+    
+    def __init__(self, top, label, field, var, font=('Arial','11')):
         self.hours = StringVar()
         self.minutes = StringVar()
         self.seconds = StringVar()
@@ -264,23 +210,23 @@ class LabeledTimeEdit:
         self.container = Frame(top.content,width=580,height=36)
         self.field = field
         self.var = var
-        self.var.set(top.message.fields[field][1])
+        self.var.set(tmp if (tmp:=top.message.fields[field][1])!=None else '')
         self.hours.set(self.var.get()[:2])
         self.minutes.set(self.var.get()[2:4])
         self.seconds.set(self.var.get()[4:])
         self.label = Label(self.container, text=label, font=font, width=30,anchor='e')
-        self.hoursline = Entry(self.container, font=font)
-        self.hoursline.config(textvariable=self.hours, validate='key', validatecommand=self.update)
-        self.minutesline = Entry(self.container, font=font)
-        self.minutesline.config(textvariable=self.hours, validate='key', validatecommand=self.update)
-        self.secondsline = Entry(self.container, font=font)
-        self.secondsline.config(textvariable=self.seconds, validate='key', validatecommand=self.update)
+        self.hoursline = Entry(self.container, font=font, width=2)
+        self.hoursline.config(textvariable=self.hours, validate=ALL, validatecommand=self.update)
+        self.minutesline = Entry(self.container, font=font, width=2)
+        self.minutesline.config(textvariable=self.minutes, validate=ALL, validatecommand=self.update)
+        self.secondsline = Entry(self.container, font=font, width=2)
+        self.secondsline.config(textvariable=self.seconds, validate=ALL, validatecommand=self.update)
         self.label2 = Label(self.container, text='HH:MM:SS', font=font+('italic',), width=10,anchor='e')
         self.label.place(x=0,y=7)
-        self.hoursline.place(x=320,y=7)
-        self.minutesline.place(x=360,y=7)
-        self.secondsline.place(x=400,y=7)
-        self.label2.place(x=500,y=7)
+        self.hoursline.place(x=300,y=7)
+        self.minutesline.place(x=326,y=7)
+        self.secondsline.place(x=352,y=7)
+        self.label2.place(x=410,y=7)
         
     def place(self):
         self.container.pack()
@@ -295,14 +241,15 @@ class Console:
 
     def __init__(self, top, label=None, bg='gray95', bd='2', font=('Arial',12), width=None, height=None):
         if isinstance(label,str):
-            self.container = LabelFrame(top.container,text=label,bg=bg,bd=bd,font=font,width=width,height=height)
+            self.container = LabelFrame(top,text=label,bg=bg,bd=bd,font=font,width=width,height=height)
         else:
-            self.container = Frame(top.container,bg=bg, bd=bd, width=608, height=height)
+            self.container = Frame(top,bg=bg, bd=bd, width=608, height=height)
 
         self.scrollbar = Scrollbar(self.container, orient= VERTICAL)
-        self.textfield = Text(self.container, state=DISABLED, yscrollcommand= self.scrollbar.set,bg=bg,width=width,height=height)
+        self.textfield = Text(self.container, yscrollcommand= self.scrollbar.set,bg=bg,width=width,height=height)
         self.scrollbar.config(command=self.textfield.yview)
-        self.text = ''
+        self.textfield.insert(END,'Hallo!')
+        self.textfield.configure(state=DISABLED)
 
         self.scrollbar.pack(side=RIGHT, fill=Y)
         self.textfield.pack()
@@ -323,35 +270,14 @@ class Content:
     '''
     '''
 
-    def onFrameConfigure(self, event):                                              
-        '''Reset the scroll region to encompass the inner frame'''
-        self.scrollContainer.configure(scrollregion=self.scrollContainer.bbox("all"))                 #whenever the size of the frame changes, alter the scroll region respectively.
-
-    def onCanvasConfigure(self, event):
-        '''Reset the canvas window to encompass inner frame when required'''
-        canvas_width = event.width
-        self.scrollContainer.itemconfig(self.canvas_window, width = canvas_width)
-
     def setType(self):
         self.message.setType(self.msgType.get())
         self.top.consoleFrame.addLine('Changed Message Type to '+self.msgType.get(),True)
 
     def __init__(self, top, gdtMsg):
         self.top = top
-        self.container = Frame(self.top.container, bd=0, width=608,height=500)
-        self.container.grid_propagate(0)
-        self.scrollContainer = Canvas(self.container,width=582)
-        self.scrollbar = Scrollbar(self.container, orient= VERTICAL, command=self.scrollContainer.yview)
-        self.scrollContainer.grid_propagate(0)
-        self.scrollContainer.configure(yscrollcommand=self.scrollbar.set)
-        self.scrollContainer.pack(side=LEFT, fill=None,expand=False)
-        self.content = Frame(self.scrollContainer, bd=0, width=582)
-        self.canvas_window = self.scrollContainer.create_window(0,0, window=self.content, anchor='nw')
-        self.scrollbar.pack(side = RIGHT,fill=Y)
-        self.content.grid(row=0,column=0)
-
-        self.content.bind("<Configure>", self.onFrameConfigure)
-        self.scrollContainer.bind("<Configure>", self.onCanvasConfigure)
+        self.container = ScrollFrame(self.top, bd=4, width=608,height=536)
+        self.content = self.container.interior
         
         self.typeState = None
         self.message = gdtMsg
@@ -476,14 +402,30 @@ class Content:
                     return '1'
                 if sex == 'Weiblich':
                     return '2'
+
+        def codeMapping(encoding):
+            if encoding.isnumeric():
+                if encoding == '1':
+                    return 'ascii'
+                if encoding == '2':
+                    return 'utf8'
+                if encoding == '3':
+                    return 'cp1252'
+            else:
+                if encoding == 'ascii':
+                    return '1'
+                if encoding == 'utf8':
+                    return '2'
+                if encoding == 'cp1252':
+                    return '3'
             
         self.elements = {
             'Satzidentifikation': TypeSelector(self),
             'Satzlänge': LabeledText(self,'Satzlänge','Satzlänge',self.sentLength),
             'GDT-ID-Empfänger': LabeledLineEdit(self,'GDT-ID-Empfänger','GDT-ID-Empfänger',self.gdtReceiver),
             'GDT-ID-Sender': LabeledLineEdit(self,'GDT-ID-Sender','GDT-ID-Sender',self.gdtSender),
-            'Zeichensatz': LabeledDroplist(self,'Zeichensatz','Zeichensatz',self.encoding,'ascii','utf8','cp1252'),
-            'GDT-Version': LabeledDroplist(self,'GDT-Version','GDT-Version',self.gdtVersion,['02.10'],mapping=(lambda x:x)),
+            'Zeichensatz': LabeledDroplist(self,'Zeichensatz','Zeichensatz',self.encoding,'ascii','utf8','cp1252',mapping=codeMapping),
+            'GDT-Version': LabeledDroplist(self,'GDT-Version','GDT-Version',self.gdtVersion,'02.10'),
             'Patienten-ID': LabeledLineEdit(self,'Patienten-ID','Patienten-ID',self.patID),
             'Namenszusatz': LabeledLineEdit(self,'Namenszusatz','Namenszusatz',self.nameAppendix),
             'Nachname': LabeledLineEdit(self,'Nachname','Nachname',self.lastName),
@@ -493,8 +435,8 @@ class Content:
             'Versicherungsnummer': LabeledLineEdit(self,'Versicherungsnummer','Versicherungsnummer',self.insuranceNr),
             'Wohnort': LabeledLineEdit(self,'Wohnort','Wohnort',self.residence),
             'Adresse': LabeledLineEdit(self,'Adresse','Adresse',self.address),
-            'Versichertenart': LabeledDroplist(self,'Versichertenart','Versichertenart',self.insuranceType,['Mitglied','Familienversicherter','Rentner'],mapping=insuranceTypeMapping),
-            'Geschlecht': LabeledDroplist(self,'Geschlecht','Geschlecht',self.sex,['Männlich','Weiblich'],mapping=sexMapping),
+            'Versichertenart': LabeledDroplist(self,'Versichertenart','Versichertenart',self.insuranceType,'Mitglied','Familienversicherter','Rentner',mapping=insuranceTypeMapping),
+            'Geschlecht': LabeledDroplist(self,'Geschlecht','Geschlecht',self.sex,'Männlich','Weiblich',mapping=sexMapping),
             'Körpergröße': LabeledLineEdit(self,'Körpergröße (cm)','Körpergröße',self.height),
             'Gewicht': LabeledLineEdit(self,'Gewicht (kg)','Gewicht',self.weight),
             'Muttersprache': LabeledLineEdit(self,'Muttersprache','Muttersprache',self.language),
@@ -550,24 +492,59 @@ class Content:
         for n in self.active:
             self.elements[n].place()
 
-        self.scrollContainer.config(scrollregion=self.scrollContainer.bbox('all'))
-
         
 
     def place(self,**kwargs):
         self.container.grid(row=0,column=0)
 
 
-class gdtFileTab:
+class gdtFileTab(ttk.Frame):
 
-    def __init__(self, parent, message=None, width=None, height=None):
-        self.container = parent
+    def __init__(self, parent, message=None, width=None, height=None, recentpaths=[]):
+        ttk.Frame.__init__(self,parent,width=width,height=height)
         if message == None: self.message = gdt2_1msg()
         else: self.message = message
         self.contentFrame = Content(self, self.message)
-        self.consoleFrame = Console(self, width=72, height=9)
-        #self.consoleFrame.place(x=0, y=543)
+        self.consoleFrame = Console(self, width=64, height=8)
+        self.consoleFrame.place(x=2, y=544)
         self.contentFrame.place(x=0, y=0)
+        if not os.path.exists(os.environ['HOME']+'/Messages/gdt'):
+            os.mkdir(os.environ['HOME']+'/Messages')
+            os.mkdir(os.environ['HOME']+'/Messages/gdt')
+        self.paths = [os.environ['HOME']+'/Messages/gdt/test.gdt'] + recentpaths
+
+    def print(self):
+        lines = self.message.validate()
+        if lines[0]:
+            self.consoleFrame.addLine('Warnungen:',True)
+            for n,ln in enumerate(lines[1]):
+                self.consoleFrame.addLine('\n%s : %s'% (n+1,ln),False)
+            self.consoleFrame.addLine('\n',False)
+            self.consoleFrame.addLine('\nNachricht:\n')
+            for ln in lines[2]:
+                self.consoleFrame.addLine('\n'+ln,False)
+        else:
+            self.consoleFrame.addLine('Fehler:',True)
+            for n,ln in enumerate(lines[1]):
+                self.consoleFrame.addLine('\n%s : %s'% (n,ln),False)
+        self.consoleFrame.addLine('\n',False)
+
+    def save(self,path):
+        lines = self.message.validate()
+        if lines[0]:
+            if len(lines[1])>0:
+                self.consoleFrame.addLine('Warnungen:',True)
+                for n,ln in enumerate(lines[1]):
+                    self.consoleFrame.addLine('\n%s : %s'% (n+1,ln),False)
+            with open(path,'w+b') as file:
+                encoding = ('cp1252' if (tmp:=self.message.fields['Zeichensatz'][1])==None
+                            else ('ascii' if tmp=='1' else ('utf8' if tmp=='2' else 'cp1252')))
+                for ln in lines[2]:
+                    file.write(bytes(ln+'\r\n',encoding))
+
+            self.consoleFrame.addLine('Printed to file: '+path+'\n',True)
+        
+                
     
     def pack(self, **kwargs):
         self.container.pack(**kwargs,expand=True)
@@ -662,7 +639,7 @@ class gdt2_1msg:
                 for name in self.fields:
                     if self.fields[name][1]:
                         field = self.fields[name]
-                        file.write(bytes(len3(field[1])+field[0]+field[1],'cp1252'))
+                        file.write(bytes(gdt2_1msg.len3(field[1])+field[0]+field[1],'cp1252'))
                         file.write(b'\r\n')
             return True
         except Exception as e:
@@ -693,23 +670,33 @@ class gdt2_1msg:
         except:
             return False
 
-    def validate(self,path):
+    def validate(self,path=None,lines=None):
         errors = []
         valid = True
         encoding = None
-        with open(path,'rb') as msgFile:
-            content = msgFile.read()
-            msg = str(content,'cp1252')
+        if path:
+            with open(path,'rb') as msgFile:
+                content = msgFile.read()
+                msg = str(content,'cp1252')
 
-            if msg.find('92061\r\n') > -1:
-                encoding = 'ascii'
-            elif msg.find('92062\r\n') > -1:
-                encoding = 'utf8'
-            elif msg.find('92063\r\n') > -1:
-                encoding = 'cp1252'
+                if msg.find('92061\r\n') > -1:
+                    encoding = 'ascii'
+                elif msg.find('92062\r\n') > -1:
+                    encoding = 'utf8'
+                elif msg.find('92063\r\n') > -1:
+                    encoding = 'cp1252'
 
-            if encoding:
-                msg = str(content,encoding)
+                if encoding:
+                    msg = str(content,encoding)
+        elif lines:
+            msg = "".join(lines)
+        else:
+            msg = ''
+            fields = self.fields
+            for n in fields:
+                if fields[n][1]:
+                    msg += gdt2_1msg.len3(fields[n][1]) + fields[n][0] + fields[n][1]
+                    msg += '\r\n'
 
         if msg == '':
             errors.append('FATAL: empty file')
@@ -882,4 +869,4 @@ class gdt2_1msg:
             print(n+1,'\t',l)
         print()
 
-        return True,errors
+        return True,errors,lines
