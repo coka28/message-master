@@ -500,8 +500,12 @@ class Content:
 
 class gdtFileTab(ttk.Frame):
 
-    def __init__(self, parent, message=None, width=None, height=None, recentpaths=[]):
+    def __init__(self, parent, title=None, message=None, width=None, height=None, recentpaths=[]):
         ttk.Frame.__init__(self,parent,width=width,height=height)
+        n = 0
+        for i in os.listdir():
+            if 'test' in i: n += 1
+        self.title = (title if isinstance(title,str) and len(title)>0 else 'test%s'%n)
         if message == None: self.message = gdt2_1msg()
         else: self.message = message
         self.contentFrame = Content(self, self.message)
@@ -511,7 +515,7 @@ class gdtFileTab(ttk.Frame):
         if not os.path.exists(os.environ['HOME']+'/Messages/gdt'):
             os.mkdir(os.environ['HOME']+'/Messages')
             os.mkdir(os.environ['HOME']+'/Messages/gdt')
-        self.paths = [os.environ['HOME']+'/Messages/gdt/test.gdt'] + recentpaths
+        self.paths = [os.environ['HOME']+'/Messages/gdt/'+self.title+'.gdt'] + recentpaths
 
     def print(self):
         lines = self.message.validate()
@@ -542,8 +546,22 @@ class gdtFileTab(ttk.Frame):
                 for ln in lines[2]:
                     file.write(bytes(ln+'\r\n',encoding))
 
-            self.consoleFrame.addLine('Printed to file: '+path+'\n',True)
-        
+            self.consoleFrame.addLine('Printed to file: '+path,True)
+        else:
+            self.consoleFrame.addLine('File has errors! Not printed to file',True)
+
+    def open(self,path):
+        lines = self.message.validate(path=path)
+        if lines[0]:
+            for ln in lines[2]:
+                ID = ln[3:7]
+                content = ln[7:]
+                for key in self.message.fields:
+                    if ID == self.message.fields[key][0]:
+                        self.message.fields[key][1] = content
+            self.consoleFrame.addLine('Loaded from file: '+path,True)
+        else:
+            self.consoleFrame.addLine('File '+path+' faulty, not loaded',True)
                 
     
     def pack(self, **kwargs):
@@ -789,29 +807,33 @@ class gdt2_1msg:
                             correct9218 = False
                     if ID in ['3103','6200']: # dates (format must be ddMMyyyy)
                         if len(lines[i]) != 15 or not lines[i][7:].isnumeric() or not 1 <= int(lines[i][9:11]) <= 12:
-                            errors.append('FATAL: wrong date format in line '+str(i+1)+' ('+ID+')... format has to be ddMMyyyy!')
+                            errors.append('FATAL : %s ('%('Geburtsdatum' if ID=='3103' else 'Erhebungsdatum')+
+                                          ID+') : format has to be ddMMyyyy!')
                             return False,errors
                         elif int(lines[i][9:11]) in [1,3,5,7,8,10,12]:
                             if not 1 <= int(lines[i][7:9]) <= 31:
-                                errors.append('FATAL: invalid date in line '+str(i+1)+' ('+ID+')... format has to be ddMMyyyy!')
+                                errors.append('FATAL : %s ('%('Geburtsdatum' if ID=='3103' else 'Erhebungsdatum')+
+                                              ' ('+ID+')... format has to be ddMMyyyy!')
                                 return False,errors
                         elif int(lines[i][9:11]) in [4,6,9,11]:
                             if not 1 <= int(lines[i][7:9]) <= 30:
-                                errors.append('FATAL: invalid date in line '+str(i+1)+' ('+ID+')... format has to be ddMMyyyy!')
+                                errors.append('FATAL : %s ('%('Geburtsdatum' if ID=='3103' else 'Erhebungsdatum')+
+                                              ' ('+ID+')... format has to be ddMMyyyy!')
                                 return False,errors
                         else:
                             if not 1 <= int(lines[i][7:9]) <= 29:
-                                errors.append('FATAL: invalid date in line '+str(i+1)+' ('+ID+')... format has to be ddMMyyyy!')
+                                errors.append('FATAL : %s ('%('Geburtsdatum' if ID=='3103' else 'Erhebungsdatum')+
+                                              ' ('+ID+')... format has to be ddMMyyyy!')
                                 return False,errors
                     if ID == '6201': # time of day (format must be hhmmss)
                         if len(lines[i]) != 13 or not lines[i][7:].isnumeric() or not 0 <= int(lines[i][7:9]) <= 23:
-                            errors.append('FATAL: wrong time format in line '+str(i+1)+' ('+ID+')... format has to be hhmmss!')
+                            errors.append('FATAL : Erhebungsuhrzeit ('+ID+')... format has to be hhmmss!')
                             return False,errors
                         if not 0 <= int(lines[i][9:11]) <= 59:
-                            errors.append('FATAL: wrong time format in line '+str(i+1)+' ('+ID+')... format has to be hhmmss!')
+                            errors.append('FATAL : Erhebungsuhrzeit ('+ID+')... format has to be hhmmss!')
                             return False,errors
                         if not 0 <= int(lines[i][11:13]) <= 59:
-                            errors.append('FATAL: wrong time format in line '+str(i+1)+' ('+ID+')... format has to be hhmmss!')
+                            errors.append('FATAL : Erhebungsuhrzeit ('+ID+')... format has to be hhmmss!')
                             return False,errors
                     if ID == '3110':
                         if lines[i][7:] not in ['1','2']:
@@ -859,6 +881,12 @@ class gdt2_1msg:
         for ln in lines:
             if ln[3:7] in minFields:
                 minFields.remove(ln[3:7])
+
+        for n in range(len(minFields)):
+            for k in self.fields:
+                if self.fields[k][0]==minFields[n]:
+                    minFields[n] = k
+                    break
 
         if minFields != []:
             errors.append('FATAL: missing mandatory fields for message type "'+msgType+'": '+", ".join(minFields))

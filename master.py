@@ -75,13 +75,45 @@ def setgdtpath(*opts):
                 gdtTabTop.children[n].paths.index(opts[0])))
             break
 
+gdtloadpath = tk.StringVar()
+def gdtload():
+
+    def paste():
+        for n in gdtTabTop.children:
+            if gdtTabTop.children[n].winfo_ismapped():
+                print(gdtloadpath.get())
+                try:
+                    gdtTabTop.children[n].open(line.text)
+                except:
+                    gdtTabTop.children[n].consoleFrame.addLine('File '+line.text+' not found!')
+                break
+        query.destroy()
+
+    
+    query = Tk(None,""," Dateipfad angeben")
+    line = Entry(query,width=50,textvariable=gdtloadpath,bd=4, validate=ALL)
+    ok = Button(query,text='OK',command=paste,bd=4)
+    line.grid(row=0,column=0)
+    ok.grid(row=0,column=1)
+    pass
+
+def gdtsettings():
+    opts = Tk(None,""," GDT-Optionen")
+    opts.geometry('600x400')
+    opts.resizable(width=False,height=False)
+    pass
+
 gdtprintBtn = Button(gdtTab,text='Nachricht anzeigen',command=gdtprint,bd=5)
-gdtprintBtn.place(x=300,y=728)
+gdtprintBtn.place(x=310,y=728)
 gdtsaveBtn = Button(gdtTab,text='Speichern',command=gdtsave,bd=5)
-gdtsaveBtn.place(x=140,y=728)
+gdtsaveBtn.place(x=100,y=728)
 gdtpathopts = tk.StringVar()
-gdtMsgPathMenu = OptionMenu(gdtTab,variable=gdtpathopts,value=os.environ['HOME']+'/Messages/gdt/test.gdt',command=setgdtpath)
-gdtMsgPathMenu.place(x=216,y=728)
+gdtMsgPathMenu = OptionMenu(gdtTab,variable=gdtpathopts,value='...',command=setgdtpath)
+gdtMsgPathMenu.place(x=176,y=728)
+gdtloadBtn = Button(gdtTab,text='Öffnen...',command=gdtload,bd=5)
+gdtloadBtn.place(x=10,y=728)
+gdtSettingsBtn = Button(gdtTab,text='GDT-Einstellungen',bd=5,command=gdtsettings)
+gdtSettingsBtn.place(x=464,y=728)
 
 import pickle
 try:
